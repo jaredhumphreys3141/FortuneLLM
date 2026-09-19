@@ -22,8 +22,6 @@ int main() {
   // --- terms inside a fortune, not just as a whole line ---
   blocked("Fortune favours the anal traveller.");
   blocked("anal");
-  blocked("Today you will go to hell and back.");
-  blocked("A damn fine day awaits you.");
   blocked("Beware the alabama hot pocket ahead.");   // 3-word term
   blocked("Beware the Alabama-Hot-Pocket ahead.");   // punctuated the same term
   blocked("Beware the ALABAMA   HOT  POCKET.");      // case and spacing
@@ -49,14 +47,25 @@ int main() {
   allowed("Your patience will be rewarded soon.");
   allowed("Do not count the days, make them count.");
 
+  // --- ordinary words left unblocked on purpose (tools/blocklist_allow.txt) ---
+  allowed("Today you will go to hell and back.");
+  allowed("A damn fine day awaits you.");
+  allowed("Snatch victory from the jaws of defeat.");
+  allowed("Your spunk will carry you further than your plans.");
+  allowed("A pansy will bloom where you least expect it.");
+  allowed("World domination is not the path for you.");
+  allowed("Grope for the switch and the room will light up.");
+  allowed("A bloody nose today, a crown tomorrow.");
+  allowed("The nude of the painting is you.");
+
   // --- the live check used while a fortune is being written ---
-  check(blocklist::endsWithTerm("Go to hell "),  true,  "Go to hell _",  "endsWith");
-  check(blocklist::endsWithTerm("Go to hell."),  true,  "Go to hell._",  "endsWith");
-  check(blocklist::endsWithTerm("A hell of a "), false, "A hell of a _", "endsWith");  // term is behind us
-  check(blocklist::endsWithTerm("Find a shell "), false, "Find a shell _", "endsWith");
-  check(blocklist::endsWithTerm("An analysis "), false, "An analysis _", "endsWith");
-  check(blocklist::endsWithTerm("An anal"),      true,  "An anal (no separator yet)", "endsWith");
-  check(blocklist::endsWithTerm("A "),           false, "A _",           "endsWith");
+  check(blocklist::endsWithTerm("Kiss my arse "),  true,  "Kiss my arse _",  "endsWith");
+  check(blocklist::endsWithTerm("Kiss my arse."),  true,  "Kiss my arse._",  "endsWith");
+  check(blocklist::endsWithTerm("An arse of a "),  false, "An arse of a _",  "endsWith");  // term is behind us
+  check(blocklist::endsWithTerm("An analysis "),   false, "An analysis _",   "endsWith");
+  check(blocklist::endsWithTerm("Go to hell "),    false, "Go to hell _",    "endsWith");
+  check(blocklist::endsWithTerm("An anal"),        true,  "An anal (no separator yet)", "endsWith");
+  check(blocklist::endsWithTerm("A "),             false, "A _",             "endsWith");
 
   printf(fails ? "\n%d FAILED\n" : "\nall passed\n", fails);
   return fails != 0;

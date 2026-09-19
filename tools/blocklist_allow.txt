@@ -1,0 +1,25 @@
+# Terms from blocklist_en.txt that are left unblocked: ordinary English whose
+# everyday meaning a fortune could reasonably use. Without these the sketch
+# would throw away a fortune for saying "a hell of a year", "snatch victory
+# from the jaws of defeat" or "a pansy in your garden".
+#
+# Matched after the same normalisation as the blocklist itself, so one line
+# here covers every spacing and hyphen variant of the term.
+bloody
+christ
+collared
+collaring
+crap
+damn
+domination
+grope
+hell
+jesus
+nude
+nudity
+pansy
+playboy
+sex
+shrimping
+snatch
+spunk

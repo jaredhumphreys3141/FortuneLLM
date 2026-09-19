@@ -7,9 +7,11 @@
 //
 //  The terms live in blocklist_data.h as sorted 32-bit hashes, searched the
 //  same way FortuneLLM.ino searches GPT_SEEN and GPT_WORDS. A term is matched
-//  on whole words, so "hell" is blocked but "shell" and "hello" are not, and a
-//  term of several words ("zippo cat") matches however it is punctuated
-//  ("Zippo-Cat"). Regenerate the table with tools/make_blocklist.py.
+//  on whole words, so "anal" is blocked but "analysis" is not, and a term of
+//  several words ("zippo cat") matches however it is punctuated ("Zippo-Cat").
+//  Ordinary words the fortunes are allowed to use, like "hell" and "snatch",
+//  are listed in tools/blocklist_allow.txt and left out of the table.
+//  Regenerate the table with tools/make_blocklist.py.
 // ============================================================================
 #pragma once
 #include <algorithm>
