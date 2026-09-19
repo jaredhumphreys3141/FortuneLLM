@@ -1,0 +1,464 @@
+<title>FortuneLLM Bench</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --void: #07050d;
+    --bench: #0e0a17;
+    --surface: #161020;
+    --raised: #1e1730;
+    --pcb: #120c1e;
+    --rule: #2c2240;
+    --ink: #ece6f6;
+    --dim: #9a8cb6;
+    --faint: #6b5f85;
+    --cyan: #5fe3ff;
+    --magenta: #ff4fd8;
+    --gold: #ffd76a;
+    --font-ui: 'Oxanium', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--void); }
+  body {
+    margin: 0;
+    font-family: var(--font-ui);
+    color: var(--ink);
+    background:
+      radial-gradient(120% 70% at 50% 0%, #1a1030 0%, rgba(26,16,48,0) 60%),
+      linear-gradient(180deg, var(--bench) 0%, var(--void) 70%);
+    background-attachment: fixed;
+    min-height: 100%;
+  }
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 28px 44px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* ---- masthead ---- */
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; }
+  h1 {
+    margin: 0;
+    font-size: clamp(20px, 4.4vw, 27px);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+  }
+  h1 .glow { color: var(--magenta); }
+  .sub { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.5; max-width: 62ch; flex-basis: 100%; }
+  .sub code { font-family: var(--font-mono); font-size: 12.5px; color: var(--cyan); }
+
+  /* ---- layout ---- */
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (min-width: 900px) { .stage { grid-template-columns: minmax(0, auto) minmax(300px, 1fr); } }
+
+  /* ---- the board ---- */
+  .board-col { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  .board {
+    position: relative;
+    background: linear-gradient(170deg, #1a1228 0%, var(--pcb) 55%, #0c0716 100%);
+    border: 1px solid #32264a;
+    border-radius: 12px;
+    padding: 13px 13px 15px;
+    box-shadow: 0 22px 50px -24px #000, inset 0 1px 0 #3a2c55;
+    max-width: 100%;
+  }
+  .panel-shell {
+    position: relative;
+    background: #000;
+    border-radius: 3px;
+    padding: 3px;
+    box-shadow: inset 0 0 0 1px #000, 0 0 34px -6px rgba(255,79,216,0.28);
+    line-height: 0;
+  }
+  canvas#panel {
+    display: block;
+    image-rendering: pixelated;
+    width: 640px;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 320 / 172;
+    background: #000;
+    border-radius: 1px;
+  }
+  .board-chrome {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding-top: 9px;
+  }
+  .silk {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    color: #4d4069;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hw { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+  .rgb-led {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: #14101d; border: 1px solid #2e2445;
+    transition: background 90ms linear, box-shadow 90ms linear;
+  }
+  button.boot {
+    font-family: var(--font-ui); font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: #cfc4e4; background: linear-gradient(180deg, #2b2240, #191228);
+    border: 1px solid #3d3059; border-radius: 5px;
+    padding: 6px 11px; cursor: pointer;
+    box-shadow: 0 2px 0 #0b0712;
+    transition: transform 60ms, box-shadow 60ms, opacity 140ms;
+  }
+  button.boot:active { transform: translateY(2px); box-shadow: 0 0 0 #0b0712; }
+  button.boot:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.boot:focus-visible, .ctl button:focus-visible, select:focus-visible, input:focus-visible {
+    outline: 2px solid var(--cyan); outline-offset: 2px;
+  }
+
+  /* ---- the running-state strip under the board ---- */
+  .readout {
+    width: 100%;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+    font-size: 12.5px; color: var(--dim);
+    border-top: 1px solid var(--rule);
+    padding-top: 12px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px;
+    color: var(--ink);
+  }
+  .chip::before {
+    content: ''; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--faint); box-shadow: 0 0 8px currentColor;
+  }
+  .chip[data-screen="boot"]::before { background: var(--cyan); }
+  .chip[data-screen="fortune"]::before { background: var(--magenta); }
+  .chip[data-screen="scene"]::before { background: var(--gold); }
+  .readout .val { color: var(--ink); font-family: var(--font-mono); font-size: 12px; }
+  .readout .busy { color: var(--gold); }
+
+  /* ---- controls ---- */
+  .ctl {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 15px;
+  }
+  .ctl h2 {
+    margin: 0; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint);
+  }
+  .row { display: flex; flex-direction: column; gap: 6px; }
+  .row label { font-size: 12.5px; color: var(--dim); display: flex; justify-content: space-between; gap: 10px; }
+  .row label .num { font-family: var(--font-mono); color: var(--cyan); font-variant-numeric: tabular-nums; }
+  .row .hint { font-size: 11.5px; color: var(--faint); line-height: 1.45; }
+  input[type="range"] { width: 100%; accent-color: var(--magenta); }
+  .ctl-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ctl button {
+    flex: 1 1 auto;
+    font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--ink); background: var(--raised);
+    border: 1px solid var(--rule); border-radius: 7px;
+    padding: 9px 12px; cursor: pointer;
+  }
+  .ctl button:hover { border-color: #4a3a6e; }
+  select {
+    font-family: var(--font-ui); font-size: 12.5px;
+    color: var(--ink); background: var(--raised);
+    border: 1px solid var(--rule); border-radius: 7px; padding: 7px 9px;
+  }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ---- serial monitor ---- */
+  .serial { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .serial-bar {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--rule); background: #120d1c;
+  }
+  .serial-bar h2 {
+    margin: 0; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint);
+  }
+  .serial-bar span { font-family: var(--font-mono); font-size: 11px; color: var(--faint); }
+  pre#log {
+    margin: 0; padding: 12px 14px;
+    font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6;
+    color: #b9accf;
+    height: 260px; overflow: auto;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  #log .ok { color: var(--cyan); }
+  #log .rej { color: var(--magenta); }
+  #log .fortune { color: var(--gold); }
+
+  /* ---- footnotes ---- */
+  .notes {
+    border-top: 1px solid var(--rule); padding-top: 16px;
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px;
+    font-size: 12.5px; color: var(--dim); line-height: 1.6;
+  }
+  @media (min-width: 700px) { .notes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; } }
+  .notes b { color: var(--ink); font-weight: 600; }
+  .notes code { font-family: var(--font-mono); font-size: 12px; color: var(--cyan); }
+  .boot-msg { color: var(--dim); font-size: 13px; font-family: var(--font-mono); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>FortuneLLM on the <span class="glow">bench</span></h1>
+    <p class="sub">
+      The ST7789 panel of an ESP32-S3-LCD-1.47B, 320&times;172, drawn by the sketch's own code:
+      <code>synthfont.h</code> and <code>scene.h</code> ported line for line, and the real
+      209K-parameter <code>TinyGPT</code> writing every fortune you see. Nothing here is a mockup
+      and no fortunes are canned.
+    </p>
+  </header>
+
+  <div class="stage">
+    <div class="board-col">
+      <div class="board">
+        <div class="panel-shell">
+          <canvas id="panel" width="320" height="172" aria-label="Simulated device screen"></canvas>
+        </div>
+        <div class="board-chrome">
+          <div class="silk">ESP32-S3-LCD-1.47B &middot; ST7789 &middot; 172&times;320</div>
+          <div class="hw">
+            <div class="rgb-led" id="led" title="RGB LED on GPIO38"></div>
+            <button class="boot" id="btnBoot" type="button" title="BOOT button on GPIO0 (or press Space)">Boot</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="readout">
+        <span class="chip" id="chip" data-screen="off">Powering up</span>
+        <span>Fortunes <span class="val" id="statFortunes">0</span></span>
+        <span>Landscapes <span class="val" id="statScenes">0</span></span>
+        <span id="statScene"></span>
+      </div>
+    </div>
+
+    <div class="ctl">
+      <h2>Bench controls</h2>
+
+      <div class="row">
+        <label for="speed">Model speed <span class="num"><span id="speedVal">18</span> ms/char</span></label>
+        <input type="range" id="speed" min="2" max="80" step="1" value="18">
+        <div class="hint">
+          An estimate &mdash; this was not measured on your board. Yours prints its real figure
+          over Serial as <code>ms/char</code>; set this to that number and the boot screen
+          will run at your board's pace.
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="row">
+          <label for="temp">Temperature <span class="num" id="tempVal">0.8</span></label>
+          <input type="range" id="temp" min="0.4" max="1.3" step="0.05" value="0.8">
+        </div>
+        <div class="row">
+          <label for="topk">Top-k <span class="num" id="topkVal">8</span></label>
+          <input type="range" id="topk" min="1" max="20" step="1" value="8">
+        </div>
+      </div>
+      <div class="hint" style="margin-top:-6px">Sketch defaults are 0.8 and 8.</div>
+
+      <div class="row">
+        <label for="zoom">Panel scale</label>
+        <select id="zoom">
+          <option value="1">1&times; &mdash; 320&times;172, true size</option>
+          <option value="2" selected>2&times; &mdash; 640&times;344</option>
+          <option value="3">3&times; &mdash; 960&times;516</option>
+        </select>
+      </div>
+
+      <div class="ctl-actions">
+        <button type="button" id="btnRestart">Power cycle</button>
+        <button type="button" id="btnClear">Clear serial</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="serial">
+    <div class="serial-bar">
+      <h2>Serial monitor</h2>
+      <span>115200 baud &middot; simulated</span>
+    </div>
+    <pre id="log"><span class="boot-msg">Loading model weights…</span></pre>
+  </div>
+
+  <div class="notes">
+    <p>
+      <b>What is faithful.</b> The glyph outlines, chrome gradient, neon glow, word-wrap and
+      auto-sizing come from <code>synthfont.h</code>; the skies, striped sun, ridges, skylines,
+      grid, palms and scanlines from <code>scene.h</code>. Every pixel is quantised to RGB565
+      exactly as the panel does it, and the boot screen prints through the same Adafruit GFX
+      5&times;7 font the board uses. Fortunes are sampled from the real weights and screened by the
+      real blocklist, so rejections you see here are rejections your board would make.
+    </p>
+    <p>
+      <b>What is not.</b> Timings are the browser's, not the board's, which is why the speed
+      control exists. The engine runs in double precision rather than the board's 32-bit floats,
+      so a given seed will not reproduce the board's exact wording. The BOOT button goes dead
+      while a fortune is being written, because on the board <code>loop()</code> is blocked inside
+      <code>makeFortune()</code> and never polls the pin &mdash; that dead spell is real.
+    </p>
+  </div>
+</div>
+
+<script src="synthfont.js"></script>
+<script src="scene.js"></script>
+<script src="tinygpt.js"></script>
+<script src="device.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var canvas = document.getElementById('panel');
+  var ctx = canvas.getContext('2d');
+  var img = ctx.createImageData(320, 172);
+  var logEl = document.getElementById('log');
+  var ledEl = document.getElementById('led');
+  var chipEl = document.getElementById('chip');
+  var device = null, lines = [];
+
+  function paint(px) {
+    var d = img.data;
+    for (var i = 0, j = 0; i < px.length; i++, j += 4) {
+      var v = px[i];
+      d[j] = (v >> 11) << 3;
+      d[j + 1] = ((v >> 5) & 0x3F) << 2;
+      d[j + 2] = (v & 0x1F) << 3;
+      d[j + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+  function serial(line) {
+    var cls = '';
+    if (/-> rejected/.test(line)) cls = 'rej';
+    else if (/^Fortune: /.test(line)) cls = 'fortune';
+    else if (/-> ready/.test(line)) cls = 'ok';
+    lines.push(cls ? '<span class="' + cls + '">' + esc(line) + '</span>' : esc(line));
+    if (lines.length > 400) lines = lines.slice(-400);
+    var stick = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 24;
+    logEl.innerHTML = lines.join('\n');
+    if (stick) logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  var SCREEN_LABEL = {
+    off: 'Powering up', boot: 'Boot screen', fortune: 'Fortune', scene: 'Landscape'
+  };
+
+  var lastReadout = '';
+  function refreshState() {
+    if (!device) return;
+    var s = device.lastScene;
+    var sceneText = (device.screen === 'scene' && s)
+      ? s.palette + ' \u00b7 ' + s.near + (s.palms ? ' \u00b7 ' + s.palms + ' palm' + (s.palms > 1 ? 's' : '') : '')
+      : '';
+    var key = device.screen + '|' + device.fortuneCount + '|' + device.sceneCount + '|'
+      + sceneText + '|' + (device.busy || device.phase !== 'showing');
+    if (key === lastReadout) return;
+    lastReadout = key;
+    chipEl.dataset.screen = device.screen;
+    chipEl.textContent = SCREEN_LABEL[device.screen] || device.screen;
+    document.getElementById('statFortunes').textContent = device.fortuneCount;
+    document.getElementById('statScenes').textContent = device.sceneCount;
+    document.getElementById('statScene').textContent = sceneText;
+    document.getElementById('btnBoot').disabled = device.busy || device.phase !== 'showing';
+  }
+
+  function frame() {
+    if (device) {
+      device.tick(10);
+      if (device.gfx.dirty) { paint(device.gfx.px); device.gfx.dirty = false; }
+      var l = device.led;
+      var lit = l[0] > 1 || l[2] > 1;
+      ledEl.style.background = lit
+        ? 'rgb(' + Math.round(l[0] * 4) + ',' + Math.round(l[1] * 4) + ',' + Math.round(l[2] * 4) + ')'
+        : '#14101d';
+      ledEl.style.boxShadow = lit ? '0 0 10px rgba(255,80,220,0.75)' : 'none';
+      refreshState();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---- controls ----
+  function bindRange(id, valId, fn, fixed) {
+    var el = document.getElementById(id), out = document.getElementById(valId);
+    el.addEventListener('input', function () {
+      var v = parseFloat(el.value);
+      out.textContent = fixed === undefined ? v : v.toFixed(fixed);
+      if (device) fn(v);
+    });
+  }
+  bindRange('speed', 'speedVal', function (v) { device.msPerChar = v; });
+  bindRange('temp', 'tempVal', function (v) { device.TEMPERATURE = v; }, 2);
+  bindRange('topk', 'topkVal', function (v) { device.TOP_K = v; });
+
+  document.getElementById('zoom').addEventListener('change', function () {
+    canvas.style.width = (320 * parseInt(this.value, 10)) + 'px';
+  });
+
+  document.getElementById('btnBoot').addEventListener('click', function () {
+    if (device) device.press();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space' && e.target === document.body) {
+      e.preventDefault();
+      if (device) device.press();
+    }
+  });
+  document.getElementById('btnClear').addEventListener('click', function () {
+    lines = []; logEl.innerHTML = '';
+  });
+  document.getElementById('btnRestart').addEventListener('click', function () {
+    if (device) device.boot((Math.random() * 0xFFFFFFFF) >>> 0);
+  });
+
+  // ---- load the model and start ----
+  function b64bytes(s) {
+    var bin = atob(s), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  Promise.all([
+    fetch('meta.json').then(function (r) { return r.json(); }),
+    fetch('weights.b64.txt').then(function (r) { return r.text(); })
+  ]).then(function (res) {
+    var meta = res[0];
+    var buf = b64bytes(res[1].trim()).buffer;
+    var gpt = new window.TinyGPT(meta, buf);
+    var blockBytes = b64bytes(meta.blockHashB64);
+    var hashes = new Uint32Array(blockBytes.buffer, blockBytes.byteOffset, meta.blockCount);
+    var blocklist = new window.Blocklist(hashes, meta.blockMaxWords);
+    var font = b64bytes(meta.fontB64);
+
+    lines = [];
+    device = new window.Device({
+      gpt: gpt, blocklist: blocklist, meta: meta, font: font,
+      onSerial: serial, onState: refreshState
+    });
+    device.msPerChar = parseFloat(document.getElementById('speed').value);
+    device.TEMPERATURE = parseFloat(document.getElementById('temp').value);
+    device.TOP_K = parseInt(document.getElementById('topk').value, 10);
+    device.boot((Math.random() * 0xFFFFFFFF) >>> 0);
+    requestAnimationFrame(frame);
+  }).catch(function (err) {
+    logEl.innerHTML = '<span class="boot-msg">Could not load the model weights: '
+      + esc(String(err && err.message ? err.message : err)) + '</span>';
+  });
+})();
+</script>
