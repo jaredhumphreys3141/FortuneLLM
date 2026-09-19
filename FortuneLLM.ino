@@ -20,6 +20,7 @@
      model_weights.h    - trained weights (made by fortune_llm_training/train.py)
      synthfont.h        - the synthwave font and screen renderer
      scene.h            - the random synthwave landscape generator
+     blocklist.h        - the blocked-term filter (blocklist_data.h holds the terms)
 
    Arduino IDE setup:
      Tools > Board:            ESP32S3 Dev Module
@@ -38,6 +39,7 @@
 #include "esp_random.h"
 #include "esp_heap_caps.h"
 #include "gpt.h"
+#include "blocklist.h"
 #include "synthfont.h"
 #include "scene.h"
 
@@ -62,6 +64,8 @@ const int   MAX_CHARS   = 90;     // longer fortunes are rejected (they get tiny
 const int   MAX_TRIES   = 6;      // regenerate if a fortune is unusable
 const bool  SKIP_COPIES = false;   // regenerate exact copies of training fortunes
 const bool  SKIP_MADE_UP_WORDS = false;  // regenerate fortunes containing non-words
+// Fortunes containing a blocked term (blocklist.h) are always regenerated; there
+// is no setting for that one.
 
 const unsigned long SHOW_MS = 3000;   // how long each fortune / landscape stays up
 const uint8_t LED_LEVEL = 40;
@@ -141,6 +145,7 @@ bool hasMadeUpWord(const std::string &s) {
 
 // Returns nullptr if usable, otherwise the reason it was rejected.
 const char *rejectReason(const std::string &s) {
+  if (blocklist::contains(s)) return "blocked word";
   if (s.size() < 12) return "too short";
   if ((int)s.size() > MAX_CHARS) return "too long";
   char last = s.back();
@@ -238,8 +243,9 @@ void end() { active = false; }
 // ----------------------------------------------------------- Generation ----
 // Runs the model from the start-of-fortune token until it emits end-of-fortune.
 // Pulses the LED; if the status screen is active, shows progress live.
-std::string generateOnce(int attempt) {
+std::string generateOnce(int attempt, bool &blocked) {
   gpt.reset();
+  blocked = false;
   std::string out;
   unsigned long t0 = millis();
   status::update(attempt, out, t0, nullptr, true);
@@ -249,6 +255,12 @@ std::string generateOnce(int attempt) {
     tok = gpt.sample(TEMPERATURE, TOP_K, rndFloat());
     if (tok == 0) break;
     out += GPT_CHARS[tok];
+    // A finished word that is on the blocklist ends the attempt right away, so
+    // the rest of the fortune is not written and no more of it reaches the screen.
+    if (!blocklist::isWordChar(out.back()) && blocklist::endsWithTerm(out)) {
+      blocked = true;
+      break;
+    }
     float pulse = 0.5f + 0.5f * sinf(millis() / 120.0f);
     led(LED_LEVEL * pulse, 0, LED_LEVEL * pulse * 0.6f);
     status::update(attempt, out, t0, nullptr, false);
@@ -264,14 +276,17 @@ std::string makeFortune() {
   bool ok = false;
   for (int attempt = 1; attempt <= MAX_TRIES && !ok; attempt++) {
     unsigned long ta = millis();
-    text = generateOnce(attempt);
+    bool blocked = false;
+    text = generateOnce(attempt, blocked);
     chars += text.size() + 1;
     bool copy = SKIP_COPIES && isTrainingCopy(text);
-    const char *why = rejectReason(text);
+    const char *why = blocked ? "blocked word" : rejectReason(text);
     if (!why && copy && attempt < MAX_TRIES) why = "copy of training";
     ok = (why == nullptr);
-    status::update(attempt, text, ta, ok ? "Done!" : why, true);
-    Serial.printf("  try %d: %s%s%s\n", attempt, text.c_str(), why ? "  -> rejected: " : "", why ? why : "");
+    // A blocked fortune is never redrawn or logged - the reason alone is enough.
+    status::update(attempt, blocked ? std::string() : text, ta, ok ? "Done!" : why, true);
+    Serial.printf("  try %d: %s%s%s\n", attempt, blocked ? "(withheld)" : text.c_str(),
+                  why ? "  -> rejected: " : "", why ? why : "");
     if (!ok && status::active) delay(600);   // let the rejection be seen
   }
   if (!ok) text = "The stars are silent. Try again.";
