@@ -1,0 +1,5 @@
+# Training output. model_weights.h is the checked-in artefact, not these.
+model.pt
+*.pt
+fortunes.txt
+__pycache__/
