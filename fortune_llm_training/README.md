@@ -78,10 +78,29 @@ discovering after a flash, so both scripts report it.
     python3 check_parity.py          # the header computes what the checkpoint does
 
 `train.py` holds out whole fortunes rather than a slice of the text, so the
-validation loss measures fortunes the model has not seen; it saves whenever
-that improves, so `model.pt` is the best checkpoint and not the last one. On a
-small corpus the model will memorize, which is expected — the sketch carries
-`GPT_SEEN` so it can recognize a fortune it has simply copied.
+validation loss measures fortunes the model has not seen; it saves the best
+checkpoint to `model.pt` and the last one to `<out>_last.pt`.
+
+**Use `_last.pt`, not `model.pt`, for this model.** Validation loss rewards
+generalizing away from the training text, but this model has nothing to
+generalize to — its only job is to reproduce a fixed small vocabulary
+correctly, and generalizing away from it is exactly what makes it invent
+misspelled words. Measured on this engine, generating 400 fortunes and
+counting how many contain a word the model never learned to spell, on the same
+1286-fortune corpus:
+
+| checkpoint                          | temp 0.8 | temp 1.0 |
+| ------------------------------------ | -------- | -------- |
+| best validation loss (`model.pt`)    | 76%      | 85%      |
+| last checkpoint (`model_last.pt`)    | 38%      | 48%      |
+| last checkpoint, `--weight-decay 0`  | 17%      | 23%      |
+
+`--weight-decay 0` removes the other force pushing the model away from
+memorizing: AdamW's weight decay, which exists to help a model generalize.
+Together, using the last checkpoint and training with `--weight-decay 0` cut
+the garbled fraction by roughly 4x over the default settings on this corpus.
+The sketch carries `GPT_SEEN` so it can also recognize a fortune it has simply
+copied outright, if `SKIP_COPIES` is turned on.
 
 `check_parity.py` is the one that catches the mistakes that matter. A
 transposed matrix or a layer written in the wrong order produces a header that

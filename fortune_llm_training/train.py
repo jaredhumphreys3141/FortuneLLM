@@ -132,6 +132,9 @@ def main():
     ap.add_argument("--val-frac", type=float, default=0.05)
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--eval-every", type=int, default=250)
+    ap.add_argument("--weight-decay", type=float, default=0.1,
+                    help="lower this to let the model memorize a small corpus more "
+                         "freely - see model_last.pt in the README")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -178,7 +181,7 @@ def main():
         return total / iters
 
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.99),
-                            weight_decay=0.1)
+                            weight_decay=args.weight_decay)
 
     def lr_at(step):
         if step < args.warmup:
@@ -213,7 +216,21 @@ def main():
             print("step %5d  lr %.5f  train %.4f  val %.4f  %5.0fs%s"
                   % (step, lr_at(step), tr, va, time.time() - t0, flag))
 
+    # The last checkpoint as well as the best one. Validation loss is the wrong
+    # criterion for this model on its own: a fortune writer that has memorized
+    # the corpus spells real words, and a checkpoint chosen for generalization
+    # spells invented ones. Which is better is decided by generating from both
+    # and counting made-up words, not by the loss.
+    last = os.path.join(os.path.dirname(args.out) or ".",
+                        os.path.basename(args.out).replace(".pt", "") + "_last.pt")
+    torch.save({"model": model.state_dict(), "chars": chars,
+                "dims": {"VOCAB": len(chars), "DIM": DIM, "LAYERS": LAYERS,
+                         "HEADS": HEADS, "CTX": CTX, "HIDDEN": HIDDEN},
+                "corpus": os.path.basename(args.corpus),
+                "fortunes": len(lines), "step": args.steps - 1,
+                "val_loss": estimate(val_data)}, last)
     print("best validation loss %.4f, written to %s" % (best, args.out))
+    print("final checkpoint written to %s" % last)
 
 
 if __name__ == "__main__":
