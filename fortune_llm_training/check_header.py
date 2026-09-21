@@ -89,7 +89,8 @@ def main(path=DEFAULT):
             fail.append("%s contains %d non-finite values" % (name, len(nonfinite)))
         total += len(values)
 
-    for name, count_def in (("GPT_SEEN", "GPT_SEEN_COUNT"), ("GPT_WORDS", "GPT_WORD_COUNT")):
+    for name, count_def in (("GPT_SEEN", "GPT_SEEN_COUNT"), ("GPT_WORDS", "GPT_WORD_COUNT"),
+                            ("GPT_TRIGRAMS", "GPT_TRIGRAM_COUNT")):
         n = int(re.search(r"#define\s+%s\s+(\d+)" % count_def, text).group(1))
         vals = [int(v.rstrip("uU")) for v in
                 re.search(r"%s\[\w+\]\s*=\s*\{([^}]*)\}" % name, text).group(1).split(",")]

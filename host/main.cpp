@@ -28,9 +28,11 @@ static float g_temperature = 0.8f;
 static int   g_topK        = 8;
 static int   g_maxGen      = 110;
 static int   g_maxChars    = 90;
-static int   g_maxTries    = 6;
+static int   g_maxTries    = 10;
 static bool  g_skipCopies  = false;
 static bool  g_skipMadeUp  = false;
+static bool  g_checkTrigrams = false;
+static int   g_recentMemory  = 0;   // 0 = off, matching the default filter=false state
 
 // --------------------------------------------------------------- Random ----
 // xorshift32 rather than esp_random(), so a seed reproduces a run exactly on
@@ -95,12 +97,54 @@ static bool hasMadeUpWord(const std::string &s) {
   return false;
 }
 
+static bool hasBadTrigram(const std::string &s) {
+  std::string words[3];
+  int have = 0;
+  std::string w;
+  for (size_t i = 0; i <= s.size(); i++) {
+    char c = i < s.size() ? s[i] : ' ';
+    if (isalpha((unsigned char)c) || c == '\'') {
+      w += (char)tolower((unsigned char)c);
+      continue;
+    }
+    if (w.empty()) continue;
+    words[0] = words[1];
+    words[1] = words[2];
+    words[2] = w;
+    w.clear();
+    if (++have < 3) continue;
+    std::string phrase = words[0] + " " + words[1] + " " + words[2];
+    if (!std::binary_search(GPT_TRIGRAMS, GPT_TRIGRAMS + GPT_TRIGRAM_COUNT, fnv1a(phrase)))
+      return true;
+  }
+  return false;
+}
+
+// "Don't repeat the last N shown" memory. A fixed-size vector standing in for
+// the sketch's ring buffer of RECENT_MEMORY hashes.
+static std::vector<uint32_t> g_recent;
+static size_t g_recentPos = 0;
+
+static bool isRecentRepeat(const std::string &s) {
+  uint32_t h = fnv1a(s);
+  for (size_t i = 0; i < g_recent.size(); i++)
+    if (g_recent[i] == h) return true;
+  return false;
+}
+
+static void rememberRecent(const std::string &s) {
+  if (g_recentMemory <= 0) return;
+  if ((int)g_recent.size() < g_recentMemory) g_recent.push_back(fnv1a(s));
+  else { g_recent[g_recentPos] = fnv1a(s); g_recentPos = (g_recentPos + 1) % g_recentMemory; }
+}
+
 static const char *rejectReason(const std::string &s) {
   if (s.size() < 12) return "too short";
   if ((int)s.size() > g_maxChars) return "too long";
   char last = s[s.size() - 1];
   if (last != '.' && last != '!' && last != '?') return "unfinished";
   if (g_skipMadeUp && hasMadeUpWord(s)) return "made-up word";
+  if (g_checkTrigrams && hasBadTrigram(s)) return "not a sensible order";
   return NULL;
 }
 
@@ -146,10 +190,12 @@ static std::string makeFortune(const std::vector<int> &prompt, bool greedy, bool
     const char *why = rejectReason(text);
     if (!why && g_skipCopies && isTrainingCopy(text) && attempt < g_maxTries)
       why = "copy of training";
+    if (!why && g_recentMemory > 0 && isRecentRepeat(text) && attempt < g_maxTries)
+      why = "repeat of a recent fortune";
     if (verbose)
       printf("  try %d: %s%s%s\n", attempt, text.c_str(), why ? "  -> rejected: " : "",
              why ? why : "");
-    if (!why) return text;
+    if (!why) { rememberRecent(text); return text; }
   }
   return "The stars are silent. Try again.";
 }
@@ -219,6 +265,38 @@ static int modeSelftest() {
                       std::adjacent_find(GPT_WORDS, GPT_WORDS + GPT_WORD_COUNT,
                                          std::greater<uint32_t>()) == GPT_WORDS + GPT_WORD_COUNT;
   check(sortedHashes, "training-set hashes are sorted", "the sketch binary-searches them");
+  bool sortedTrigrams = std::adjacent_find(GPT_TRIGRAMS, GPT_TRIGRAMS + GPT_TRIGRAM_COUNT,
+                                           std::greater<uint32_t>()) == GPT_TRIGRAMS + GPT_TRIGRAM_COUNT;
+  check(sortedTrigrams, "trigram hashes are sorted", "the sketch binary-searches them too");
+
+  // ---- hasBadTrigram() and the recent-memory ring buffer ----
+  check(!hasBadTrigram("Amazing things are usually built from simple parts."),
+        "a literal training fortune has no bad trigram");
+  check(hasBadTrigram("Purple elephants juggle quantum spreadsheets sideways."),
+        "an invented sentence trips the trigram check",
+        "false negative would let word salad reach the screen");
+  check(!hasBadTrigram("Go."), "a fortune under 3 words has nothing to check and passes");
+  {
+    int savedMemory = g_recentMemory;
+    g_recentMemory = 3;
+    g_recent.clear();
+    g_recentPos = 0;
+    bool sawFirst = isRecentRepeat("Amazing things are usually built from simple parts.");
+    rememberRecent("Amazing things are usually built from simple parts.");
+    rememberRecent("Nervous is normal. Start anyway.");
+    rememberRecent("Yesterday's lessons are today's skills.");
+    // The buffer (capacity 3) is exactly full here - nothing evicted yet.
+    rememberRecent("Space is hard. That is why every launch matters.");   // this push evicts entry 1
+    bool forgetsOldest = !isRecentRepeat("Amazing things are usually built from simple parts.");
+    bool stillHasNewest = isRecentRepeat("Space is hard. That is why every launch matters.");
+    check(!sawFirst, "isRecentRepeat() is empty before anything is remembered");
+    check(forgetsOldest, "the ring buffer evicts the oldest entry once it wraps",
+          "otherwise RECENT_MEMORY grows without bound");
+    check(stillHasNewest, "the newest fortune is recognized as a repeat");
+    g_recent.clear();
+    g_recentPos = 0;
+    g_recentMemory = savedMemory;
+  }
 
   // ---- the forward pass ----
   gpt.reset();
@@ -332,6 +410,8 @@ static void usage() {
       "  --filter         apply the sketch's acceptance rules and retry\n"
       "  --skip-copies    with --filter, reject copies of training fortunes\n"
       "  --skip-made-up   with --filter, reject fortunes with unknown words\n"
+      "  --check-trigrams with --filter, reject a 3-word run never seen in training\n"
+      "  --no-repeat N    with --filter, reject a repeat of the last N shown (0 off)\n"
       "  --verbose        with --filter, show rejected attempts\n",
       g_temperature, g_topK, g_maxGen);
 }
@@ -364,6 +444,8 @@ int main(int argc, char **argv) {
     else if (a == "--filter") filter = true;
     else if (a == "--skip-copies") { filter = true; g_skipCopies = true; }
     else if (a == "--skip-made-up") { filter = true; g_skipMadeUp = true; }
+    else if (a == "--check-trigrams") { filter = true; g_checkTrigrams = true; }
+    else if (a == "--no-repeat" && next) { filter = true; g_recentMemory = atoi(argv[++i]); }
     else if (a == "--verbose") verbose = true;
     else {
       fprintf(stderr, "error: unknown option '%s'\n\n", a.c_str());

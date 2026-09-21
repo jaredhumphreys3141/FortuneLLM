@@ -61,9 +61,16 @@ const float TEMPERATURE = 0.7f;   // 0.6 = safe and repetitive, 1.1 = wild but t
 const int   TOP_K       = 8;      // only sample from the n likeliest characters
 const int   MAX_GEN     = 110;    // hard cap on characters per fortune
 const int   MAX_CHARS   = 90;     // longer fortunes are rejected (they get tiny)
-const int   MAX_TRIES   = 6;      // regenerate if a fortune is unusable
+const int   MAX_TRIES   = 10;     // regenerate if a fortune is unusable - raised from 6
+                                   // alongside CHECK_TRIGRAMS and RECENT_MEMORY, which
+                                   // reject more attempts and need the extra tries
 const bool  SKIP_COPIES = false;   // regenerate exact copies of training fortunes
 const bool  SKIP_MADE_UP_WORDS = true;  // regenerate fortunes containing non-words
+const bool  CHECK_TRIGRAMS = true;   // regenerate fortunes with a 3-word run never
+                                      // seen in training - real words, wrong order
+const int   RECENT_MEMORY = 100;   // don't show a fortune that matches one of the
+                                    // last N shown, so the model's favorites don't
+                                    // crowd out the rest of what it knows
 // Fortunes containing a blocked term (blocklist.h) are always regenerated; there
 // is no setting for that one.
 
@@ -143,6 +150,56 @@ bool hasMadeUpWord(const std::string &s) {
   return false;
 }
 
+// True if any 3 consecutive words never appeared in that order in the training
+// text - real words individually, but a combination the model invented. Words
+// are collected across the whole fortune the same way hasMadeUpWord() does (a
+// sentence break inside a fortune does not reset the window), and each window
+// is hashed as "w1 w2 w3" with a single space, matching export_header.py's
+// corpus_trigrams() exactly. A fortune under 3 words has no window to check
+// and passes.
+bool hasBadTrigram(const std::string &s) {
+  std::string words[3];
+  int have = 0;
+  std::string w;
+  for (size_t i = 0; i <= s.size(); i++) {
+    char c = i < s.size() ? s[i] : ' ';
+    if (isalpha((unsigned char)c) || c == '\'') {
+      w += (char)tolower((unsigned char)c);
+      continue;
+    }
+    if (w.empty()) continue;
+    words[0] = words[1];
+    words[1] = words[2];
+    words[2] = w;
+    w.clear();
+    if (++have < 3) continue;
+    std::string phrase = words[0] + " " + words[1] + " " + words[2];
+    if (!std::binary_search(GPT_TRIGRAMS, GPT_TRIGRAMS + GPT_TRIGRAM_COUNT, fnv1a(phrase)))
+      return true;
+  }
+  return false;
+}
+
+// Remembers the last RECENT_MEMORY fortunes actually shown, so the same
+// handful of favorites the model keeps returning to don't crowd out the rest
+// of what it knows. Plain RAM, reset on reboot - it only needs to smooth out
+// one sitting in front of the board, not survive power loss.
+uint32_t recentHashes[RECENT_MEMORY];
+int recentCount = 0, recentPos = 0;
+
+bool isRecentRepeat(const std::string &s) {
+  uint32_t h = fnv1a(s);
+  for (int i = 0; i < recentCount; i++)
+    if (recentHashes[i] == h) return true;
+  return false;
+}
+
+void rememberRecent(const std::string &s) {
+  recentHashes[recentPos] = fnv1a(s);
+  recentPos = (recentPos + 1) % RECENT_MEMORY;
+  if (recentCount < RECENT_MEMORY) recentCount++;
+}
+
 // Returns nullptr if usable, otherwise the reason it was rejected.
 const char *rejectReason(const std::string &s) {
   if (blocklist::contains(s)) return "blocked word";
@@ -151,6 +208,7 @@ const char *rejectReason(const std::string &s) {
   char last = s.back();
   if (last != '.' && last != '!' && last != '?') return "unfinished";
   if (SKIP_MADE_UP_WORDS && hasMadeUpWord(s)) return "made-up word";
+  if (CHECK_TRIGRAMS && hasBadTrigram(s)) return "not a sensible order";
   return nullptr;
 }
 
@@ -280,8 +338,10 @@ std::string makeFortune() {
     text = generateOnce(attempt, blocked);
     chars += text.size() + 1;
     bool copy = SKIP_COPIES && isTrainingCopy(text);
+    bool repeat = !blocked && isRecentRepeat(text);
     const char *why = blocked ? "blocked word" : rejectReason(text);
     if (!why && copy && attempt < MAX_TRIES) why = "copy of training";
+    if (!why && repeat && attempt < MAX_TRIES) why = "repeat of a recent fortune";
     ok = (why == nullptr);
     // A blocked fortune is never redrawn or logged - the reason alone is enough.
     status::update(attempt, blocked ? std::string() : text, ta, ok ? "Done!" : why, true);
@@ -290,6 +350,7 @@ std::string makeFortune() {
     if (!ok && status::active) delay(600);   // let the rejection be seen
   }
   if (!ok) text = "AI FAILURE";
+  else rememberRecent(text);
   unsigned long ms = millis() - t0;
   Serial.printf("Fortune: %s\n  (%d chars generated in %lu ms, %.1f ms/char)\n",
                 text.c_str(), chars, ms, chars ? (float)ms / chars : 0.0f);

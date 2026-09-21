@@ -93,6 +93,35 @@ def corpus_hashes(path):
     return seen, sorted(set(fnv1a(w) for w in words)), len(lines), len(words)
 
 
+def corpus_trigrams(path):
+    """GPT_TRIGRAMS: every run of 3 consecutive words in the corpus, hashed.
+
+    hasBadTrigram() in FortuneLLM.ino tokenizes a fortune into words with the
+    same rule as hasMadeUpWord() (letters and apostrophes; everything else
+    separates), slides a 3-word window over the whole fortune - across
+    sentence boundaries within one fortune, the same as the word check - and
+    hashes each window as "w1 w2 w3" with a single space between words. This
+    has to compute the identical hash for the identical join, or the sketch's
+    binary search will reject text that is actually fine.
+    """
+    lines = [l.strip() for l in open(path, encoding="utf-8")]
+    lines = [l for l in lines if l]
+
+    trigrams = set()
+    for line in lines:
+        words = []
+        w = ""
+        for c in line + " ":
+            if c.isalpha() or c == "'":
+                w += c.lower()
+            elif w:
+                words.append(w)
+                w = ""
+        for i in range(len(words) - 2):
+            trigrams.add(fnv1a(" ".join(words[i:i + 3])))
+    return sorted(trigrams)
+
+
 def write_array(f, decl, values, per_line=12):
     f.write("static const float %s = {" % decl)
     for i, v in enumerate(values):
@@ -134,12 +163,16 @@ def main():
         write_u32(f, "GPT_SEEN[GPT_SEEN_COUNT]", seen)
         f.write("#define GPT_WORD_COUNT %d\n" % len(words))
         write_u32(f, "GPT_WORDS[GPT_WORD_COUNT]", words)
+        trigrams = corpus_trigrams(args.corpus)
+        f.write("#define GPT_TRIGRAM_COUNT %d\n" % len(trigrams))
+        write_u32(f, "GPT_TRIGRAMS[GPT_TRIGRAM_COUNT]", trigrams)
 
     print("wrote %s" % args.out)
     print("  vocabulary  %d characters" % dims["VOCAB"])
     print("  weights     %d floats" % total)
     print("  GPT_SEEN    %d hashes from %d fortunes" % (len(seen), n_fortunes))
     print("  GPT_WORDS   %d hashes from %d distinct words" % (len(words), n_words))
+    print("  GPT_TRIGRAMS %d hashes (%.0f KB)" % (len(trigrams), len(trigrams) * 4 / 1024.0))
     print("  size        %.2f MB" % (os.path.getsize(args.out) / 1048576.0))
 
 

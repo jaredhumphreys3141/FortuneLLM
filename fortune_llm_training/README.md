@@ -110,8 +110,14 @@ either the checkpoint or the header, catches it.
 
 ## Afterwards
 
-The export rewrites `GPT_SEEN` and `GPT_WORDS` from the corpus as well as the
-weights, so both stay in step with the text the model was actually trained on.
+The export rewrites `GPT_SEEN`, `GPT_WORDS` and `GPT_TRIGRAMS` from the corpus
+as well as the weights, so all three stay in step with the text the model was
+actually trained on. `GPT_TRIGRAMS` backs `hasBadTrigram()` in
+`../FortuneLLM.ino`: every run of 3 consecutive words that occurred in the
+corpus, hashed, so the sketch can reject a fortune whose words are individually
+real but never occurred in that order - the "word salad" a small model
+produces once vocabulary alone stops being the limiting factor. It costs
+roughly 4 bytes per distinct trigram (about 35 KB on the 1497-fortune corpus).
 
 Two other places carry a copy of the weights and need regenerating:
 
