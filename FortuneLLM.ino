@@ -57,13 +57,13 @@
 #define IPS_PANEL       true
 
 // ------------------------------------------------------------ Settings ----
-const float TEMPERATURE = 0.8f;   // 0.6 = safe and repetitive, 1.1 = wild but typo-prone
+const float TEMPERATURE = 0.7f;   // 0.6 = safe and repetitive, 1.1 = wild but typo-prone
 const int   TOP_K       = 8;      // only sample from the n likeliest characters
 const int   MAX_GEN     = 110;    // hard cap on characters per fortune
 const int   MAX_CHARS   = 90;     // longer fortunes are rejected (they get tiny)
 const int   MAX_TRIES   = 6;      // regenerate if a fortune is unusable
 const bool  SKIP_COPIES = false;   // regenerate exact copies of training fortunes
-const bool  SKIP_MADE_UP_WORDS = false;  // regenerate fortunes containing non-words
+const bool  SKIP_MADE_UP_WORDS = true;  // regenerate fortunes containing non-words
 // Fortunes containing a blocked term (blocklist.h) are always regenerated; there
 // is no setting for that one.
 
@@ -289,7 +289,7 @@ std::string makeFortune() {
                   why ? "  -> rejected: " : "", why ? why : "");
     if (!ok && status::active) delay(600);   // let the rejection be seen
   }
-  if (!ok) text = "The stars are silent. Try again.";
+  if (!ok) text = "AI FAILURE";
   unsigned long ms = millis() - t0;
   Serial.printf("Fortune: %s\n  (%d chars generated in %lu ms, %.1f ms/char)\n",
                 text.c_str(), chars, ms, chars ? (float)ms / chars : 0.0f);
