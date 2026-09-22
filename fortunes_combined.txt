@@ -1495,3 +1495,222 @@ One clean test today beats three guesses tomorrow.
 One finished thing this week is enough.
 One good hour of work beats a day of planning.
 One more try is usually all it takes.
+Your next weld will be cleaner than the last one.
+Your next cut will be cleaner than the last one.
+Your next sketch will be clearer than the last one.
+Your next test will teach you more than the last one.
+Your next plan will be simpler than the last one.
+Your next fix will take half the time.
+Your next prototype will show you what the first one could not.
+Your next project will use every lesson this one taught you.
+Your next good idea is closer than it looks.
+Your next week in the shop will be a good one.
+Your hands will learn this faster than you think.
+Your hands are getting better every time you pick up a tool.
+Your hands will remember what your notes miss.
+Your tools will work well for you if you take care of them.
+Your tools are ready when you are.
+Your bench will be ready for the next idea. Keep it clean.
+Your shop will teach you more than any class.
+Your notebook will be full of good ideas by the end of the year.
+Your notebook is a map of how far you have come.
+Your mistakes this week will be your skills next month.
+Your mistakes are teaching you faster than your wins.
+Your questions will keep the project honest.
+Your curiosity will keep you learning for years.
+Your curiosity will find the answer your plan missed.
+Your patience will pay you back with good work.
+Your patience will save you from the fast mistake.
+Your courage will get the first part built.
+Your courage grows every time you finish something hard.
+Your steady work will last longer than any fast start.
+Your steady pace will get you there.
+Your small steps are adding up to something big.
+Your best idea this year has not arrived yet.
+Your best project is the one you start next.
+Your best skill will be the one you practice most.
+Your future self will be glad you started today.
+Your future self will thank you for the notes.
+Your future is built one finished project at a time.
+Your care will show in the finished work.
+Your plan will get better every time you test it.
+Every weld you make makes your hand steadier for the next one.
+Every cut you make teaches your hands to be more careful.
+Every sketch you draw makes the next one clearer.
+Every build you finish makes you faster at the next one.
+Every test you run brings the answer closer.
+Every fix you make teaches you how the machine works.
+Every mistake you learn from makes you harder to stop.
+Every question you answer opens two new ones.
+Every hour you practice makes the next hour easier.
+Every week you keep going makes the finish easier to see.
+Every good tool you own was worth the wait.
+Every good plan was changed many times.
+Every good part was measured more than once.
+Every good weld started as a practice weld.
+Every good machine started as a rough sketch.
+Every good builder started with one small project.
+Every good habit makes the hard days easier.
+Every good week has one hard day. Keep going.
+Every hard problem has a simple part. Start there.
+Every hard project gets easier once you start.
+Every hard day in the shop teaches you something.
+Every small win this week is worth counting.
+Every small step is still a step forward.
+Every small fix makes the whole machine better.
+Every day you build makes you a better builder.
+Every day is a new chance to finish something.
+Every project teaches you what the next one needs.
+Every project gets easier after the hardest part.
+Every project is a chance to learn a new tool.
+Every question is the start of a good project.
+Every idea gets better once you start building it.
+Every idea you write down is one you get to keep.
+Every tool has a lesson in it. Learn one this week.
+Every star you see tonight has been burning for years. Keep burning.
+Every rocket was tested many times before it flew.
+Every wave reaches the shore. Keep coming back.
+Every map was drawn by someone who kept going.
+You will find a better way on your next try.
+You will find the problem once you slow down.
+You will find that the hard part was worth it.
+You will find your pace. Then you will find your finish.
+You will learn this. Everyone who knows it had to learn it too.
+You will learn more from finishing than from planning.
+You will learn the most from the part that breaks.
+You will look back at your first project and see how far you have come.
+You will look back at this and be glad.
+You will see the answer once the first part is built.
+You will see how much you have grown when you start the next project.
+You will be glad you finished this one.
+You will be glad you tested it twice.
+You will be glad you kept the notes.
+You will be glad you started when you did.
+You will get this right. It just takes a few more tries.
+You will get faster at this with every project.
+You will know more after the first test than after a week of planning.
+You will build better things as your skills grow.
+You will finish this project, and the next one will be easier.
+You will make it work. Keep testing.
+You can finish something great this week.
+You can learn anything one step at a time.
+You can fix this. You have fixed harder things.
+You can start with what you have.
+You can build more than you think.
+You have what it takes to finish this.
+You have learned enough to start.
+You have more skill than you give yourself credit for.
+You have come further than you think. Keep going.
+You are getting better at this every week.
+You are closer to the answer than you think.
+You are the kind of builder who finishes things.
+You are building skills that will last for years.
+The work you finish today will make tomorrow easier.
+The notes you keep today will guide you next year.
+The tool you learn this week will open new projects.
+The skill you build this year will last you for years.
+The time you take to test will save you a week of fixing.
+The care you put in now will show for years.
+The hard part you finish today is one you never have to do again.
+The project you finish this week will teach you the most.
+The idea you write down tonight will be there tomorrow.
+The question you ask today will save you an hour later.
+The next part is easier than the last one.
+The next week will be better than this one.
+The next project will be your best one yet.
+The next step is always smaller than the whole project.
+The best tool you own is your curiosity.
+The best time to test is before the part is finished.
+The best way through the hard part is one step at a time.
+The best work comes from people who keep showing up.
+The best builders are the ones who keep learning.
+The best ideas come to people with busy hands.
+The good part of the project is just ahead.
+The good work you do today will still be good next year.
+The finish is closer than it looks.
+The hard week will end. The skills will stay.
+The slow part is where the learning happens.
+The shop is ready. The tools are ready. So are you.
+A good plan starts with a clear question.
+A good project starts with one step.
+A good habit starts today.
+A good week starts with a clean bench.
+A good day starts with one finished thing.
+A good build starts with a careful plan.
+A good answer starts with a good test.
+A good weld starts with clean metal.
+A better plan will come from your first test.
+A better idea will come once you start.
+A better week is coming. Be ready for it.
+A better project is waiting on the other side of this one.
+A new skill is one project away.
+A new idea is waiting in your notebook.
+A new week is a new chance to build.
+A new tool will teach you a new way to think.
+A finished project is the best teacher you will ever have.
+A small step today will make a big difference next month.
+A steady week will get you further than a fast day.
+A clean bench is a good start to any day.
+Good work is waiting for you in the shop.
+Good ideas are waiting in your notebook.
+Good things take time. Give them the time.
+Good days come to people who keep building.
+Good tools make good work easier.
+Good notes make good builds easier.
+Good habits make good weeks.
+Today is a good day to learn something new.
+Today is a good day to test the idea.
+Today is a good day to clean the bench and start fresh.
+Today will teach you something if you let it.
+Today is where the finished project starts.
+Tomorrow will be easier because you kept going today.
+Tomorrow is a good day to finish what you start today.
+This week is a good week to try something new.
+This week will teach you something you will use for years.
+This project will make the next one easier.
+This hard part will be the part you remember most.
+This is the kind of problem you are good at solving.
+Tonight is a good night to finish one small thing.
+Keep going. The finish line is closer than you think.
+Keep going. Your skills are growing every week.
+Keep testing. The answer is in the data.
+Keep building. Every project makes you better.
+Keep learning. The world gets more interesting.
+Keep your bench clean and your plan simple.
+Keep your curiosity. It will take you far.
+Keep your notes. Your future self will need them.
+Start the project you keep thinking about.
+Start with one small part. The rest will follow.
+Start today. The best time to build is now.
+Finish one small thing tonight.
+Finish the hard part first. The rest will feel easy.
+Finish what you started, then start something new.
+Take the next step. It will show you the one after.
+Take your time. Good work is worth it.
+Take good notes. They are a gift to your future self.
+Trust your hands. They know more than you think.
+Trust the work. It is working even when it is slow.
+Trust your tests. They will tell you the truth.
+Look how far you have come. Keep going.
+Look at your first project. Now look at your last one.
+Look for the simple fix first.
+Give yourself credit for the progress you have made.
+Give the project one more good hour today.
+Be proud of the work you finished this week.
+Be patient. The skills are coming.
+Be curious. It is the start of every good project.
+Nothing you learn is ever wasted.
+Nothing is too small to finish well.
+No project is too hard to start.
+One good idea is all you need to begin.
+One finished project changes everything.
+One more test will show you the answer.
+Small wins build big projects.
+Small steps get you there.
+Slow progress is still progress.
+Stars take years to reach you. Good work takes time too.
+The stars are far away, and you can still see them. Keep reaching.
+Rockets need a good plan and a lot of courage. So do you.
+The sea is deep and full of things to find. So is your curiosity.
+Metal gets stronger when it is worked. So do you.
+Steel is shaped with heat and patience. So are skills.
