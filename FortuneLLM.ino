@@ -12,13 +12,17 @@
    The next fortune is written in the background while each landscape is on
    screen, so fortunes appear instantly. At power-up, a live status screen
    shows the model writing the first fortune character by character.
-   Press BOOT to skip ahead to the next screen right away.
+   Press BOOT to skip ahead to the next screen right away. Hold BOOT for
+   about a second to switch to the next font, shown in itself to confirm;
+   the choice is written to flash, so it comes back after a power cycle
+   or a reflash, until BOOT is held again.
 
    Files in this sketch folder:
      FortuneLLM.ino     - this file (button, generation, screens)
      gpt.h              - the transformer inference engine
      model_weights.h    - trained weights (made by fortune_llm_training/train.py)
      synthfont.h        - the synthwave font and screen renderer
+     synthfont_faces.h  - alternative faces, switched between with BOOT
      scene.h            - the random synthwave landscape generator
      blocklist.h        - the blocked-term filter (blocklist_data.h holds the terms)
 
@@ -33,6 +37,7 @@
 */
 
 #include <Arduino_GFX_Library.h>
+#include <Preferences.h>
 #include <string>
 #include <algorithm>
 #include <ctype.h>
@@ -41,6 +46,7 @@
 #include "gpt.h"
 #include "blocklist.h"
 #include "synthfont.h"
+#include "synthfont_faces.h"
 #include "scene.h"
 
 // ---------------------------------------------------------------- Pins ----
@@ -76,6 +82,8 @@ const int   RECENT_MEMORY = 100;   // don't show a fortune that matches one of t
 
 const unsigned long SHOW_MS = 5000;   // how long each fortune / landscape stays up
 const uint8_t LED_LEVEL = 30;
+const unsigned long LONG_PRESS_MS = 900;   // hold BOOT this long to switch fonts
+                                            // instead of just advancing the screen
 
 // ------------------------------------------------------------- Display ----
 Arduino_DataBus *bus = new Arduino_HWSPI(PIN_LCD_DC, PIN_LCD_CS, PIN_LCD_SCLK,
@@ -90,6 +98,23 @@ float *distBuf = nullptr;    // renderer scratch space
 
 TinyGPT gpt;
 bool modelReady = false;
+
+// ------------------------------------------------------------ Font choice ----
+// Faces to cycle through with a long BOOT press; see synthfont_faces.h for how
+// each one was drawn and scored. The choice is saved under this index.
+struct FontChoice { const synth::Face *face; const char *name; };
+const FontChoice FONTS[] = {
+  {&synth::SYNTHFONT, "Synth"},
+  {&synth::BOULEVARD, "Boulevard"},
+  {&synth::BEACON,    "Beacon"},
+  {&synth::MARQUEE,   "Marquee"},
+};
+const int NUM_FONTS = sizeof(FONTS) / sizeof(FONTS[0]);
+
+Preferences prefs;      // wraps NVS, a small partition in flash reserved for
+                         // settings like this one; it survives both a power
+                         // cycle and a normal reflash (only "erase flash" clears it)
+int fontIndex = 0;      // loaded from prefs in setup(), changed by holding BOOT
 
 // --------------------------------------------------------------- Helpers ----
 float rndFloat() { return (esp_random() >> 8) * (1.0f / 16777216.0f); }
@@ -108,11 +133,11 @@ void fallbackText(const std::string &text) {  // if screen buffers failed to all
   gfx->print(text.c_str());
 }
 
-// Render text in the synthwave style and push it to the screen.
+// Render text in the current font and push it to the screen.
 void showText(const std::string &text) {
   if (!frame || !distBuf) { fallbackText(text); return; }
   unsigned long t0 = millis();
-  synth::render(frame, distBuf, SCREEN_W, SCREEN_H, text);
+  synth::render(*FONTS[fontIndex].face, frame, distBuf, SCREEN_W, SCREEN_H, text);
   gfx->draw16bitRGBBitmap(0, 0, frame, SCREEN_W, SCREEN_H);
   Serial.printf("  (fortune screen rendered in %lu ms)\n", millis() - t0);
 }
@@ -379,12 +404,26 @@ void showNext() {
   nextIsFortune = !nextIsFortune;
 }
 
+// Switch to the next font, show its name in itself to confirm the choice, and
+// save it to flash so it is still selected after a power cycle or a reflash.
+void cycleFont() {
+  fontIndex = (fontIndex + 1) % NUM_FONTS;
+  prefs.putUChar("font", (uint8_t)fontIndex);
+  Serial.printf("Font: %s\n", FONTS[fontIndex].name);
+  showText(FONTS[fontIndex].name);
+  shownAt = millis();   // hold the confirmation for a normal turn, then resume
+}
+
 // ------------------------------------------------------- Setup / loop ----
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_LCD_BL, OUTPUT);
   led(0, 0, 0);
+
+  prefs.begin("fortunellm", false);
+  fontIndex = prefs.getUChar("font", 0) % NUM_FONTS;
+  Serial.printf("Font: %s (hold BOOT to change)\n", FONTS[fontIndex].name);
 
   if (!gfx->begin()) Serial.println("Display init failed!");
   gfx->setTextWrap(false);
@@ -417,7 +456,11 @@ void loop() {
   bool pressed = (digitalRead(PIN_BUTTON) == LOW);
 
   if (pressed && !wasPressed) pressStart = now;
-  if (!pressed && wasPressed && now - pressStart >= 30) showNext();
+  if (!pressed && wasPressed) {
+    unsigned long heldFor = now - pressStart;
+    if (heldFor >= LONG_PRESS_MS) cycleFont();
+    else if (heldFor >= 30) showNext();
+  }
   wasPressed = pressed;
 
   if (millis() - shownAt >= SHOW_MS) showNext();
