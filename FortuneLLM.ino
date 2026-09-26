@@ -63,16 +63,16 @@
 #define IPS_PANEL       true
 
 // ------------------------------------------------------------ Settings ----
-const float TEMPERATURE = 0.7f;   // 0.6 = safe and repetitive, 1.1 = wild but typo-prone
+const float TEMPERATURE = 1.0f;   // 0.6 = safe and repetitive, 1.1 = wild but typo-prone
 const int   TOP_K       = 8;      // only sample from the n likeliest characters
 const int   MAX_GEN     = 110;    // hard cap on characters per fortune
 const int   MAX_CHARS   = 90;     // longer fortunes are rejected (they get tiny)
 const int   MAX_TRIES   = 10;     // regenerate if a fortune is unusable - raised from 6
                                    // alongside CHECK_TRIGRAMS and RECENT_MEMORY, which
                                    // reject more attempts and need the extra tries
-const bool  SKIP_COPIES = false;   // regenerate exact copies of training fortunes
-const bool  SKIP_MADE_UP_WORDS = true;  // regenerate fortunes containing non-words
-const bool  CHECK_TRIGRAMS = true;   // regenerate fortunes with a 3-word run never
+const bool  SKIP_COPIES = true;   // regenerate exact copies of training fortunes
+const bool  SKIP_MADE_UP_WORDS = false;  // regenerate fortunes containing non-words
+const bool  CHECK_TRIGRAMS = false;   // regenerate fortunes with a 3-word run never
                                       // seen in training - real words, wrong order
 const int   RECENT_MEMORY = 100;   // don't show a fortune that matches one of the
                                     // last N shown, so the model's favorites don't
