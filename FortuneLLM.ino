@@ -207,10 +207,28 @@ bool hasBadTrigram(const std::string &s) {
 
 // Remembers the last RECENT_MEMORY fortunes actually shown, so the same
 // handful of favorites the model keeps returning to don't crowd out the rest
-// of what it knows. Plain RAM, reset on reboot - it only needs to smooth out
-// one sitting in front of the board, not survive power loss.
+// of what it knows. The hashes live in NVS alongside the font choice, so a
+// power cycle or a reflash does not wipe the list and bring the favorites
+// straight back. Each slot is its own key ("r0".."r99") and only the slot that
+// changed is rewritten, so a new fortune costs two small NVS entries (the slot
+// and the write position) rather than rewriting the whole list - about 8,600
+// writes a day at one fortune every 10 s, which NVS spreads across its pages.
 uint32_t recentHashes[RECENT_MEMORY];
 int recentCount = 0, recentPos = 0;
+
+void loadRecent() {
+  char key[8];
+  recentCount = 0;
+  for (int i = 0; i < RECENT_MEMORY; i++) {
+    snprintf(key, sizeof(key), "r%d", i);
+    if (!prefs.isKey(key)) break;   // slots are filled in order, so the first gap ends the list
+    recentHashes[i] = prefs.getUInt(key, 0);
+    recentCount++;
+  }
+  recentPos = prefs.getUShort("rpos", 0) % RECENT_MEMORY;
+  if (recentCount < RECENT_MEMORY) recentPos = recentCount;   // still filling up
+  Serial.printf("Recent memory: %d of %d fortunes restored\n", recentCount, RECENT_MEMORY);
+}
 
 bool isRecentRepeat(const std::string &s) {
   uint32_t h = fnv1a(s);
@@ -220,8 +238,12 @@ bool isRecentRepeat(const std::string &s) {
 }
 
 void rememberRecent(const std::string &s) {
+  char key[8];
+  snprintf(key, sizeof(key), "r%d", recentPos);
   recentHashes[recentPos] = fnv1a(s);
+  prefs.putUInt(key, recentHashes[recentPos]);
   recentPos = (recentPos + 1) % RECENT_MEMORY;
+  prefs.putUShort("rpos", (uint16_t)recentPos);
   if (recentCount < RECENT_MEMORY) recentCount++;
 }
 
@@ -351,22 +373,25 @@ std::string generateOnce(int attempt, bool &blocked) {
   return out;
 }
 
-// Writes one fortune, retrying if a result is unusable.
+// Writes one fortune, retrying if a result is unusable. A recent repeat is
+// never shown. A copy of a training fortune is rejected too, but the first one
+// that isn't a recent repeat is kept as a fallback in case no try succeeds.
 std::string makeFortune() {
   unsigned long t0 = millis();
   int chars = 0;
-  std::string text;
+  std::string text, fallback;
   bool ok = false;
   for (int attempt = 1; attempt <= MAX_TRIES && !ok; attempt++) {
     unsigned long ta = millis();
     bool blocked = false;
     text = generateOnce(attempt, blocked);
     chars += text.size() + 1;
-    bool copy = SKIP_COPIES && isTrainingCopy(text);
-    bool repeat = !blocked && isRecentRepeat(text);
     const char *why = blocked ? "blocked word" : rejectReason(text);
-    if (!why && copy && attempt < MAX_TRIES) why = "copy of training";
-    if (!why && repeat && attempt < MAX_TRIES) why = "repeat of a recent fortune";
+    if (!why && isRecentRepeat(text)) why = "repeat of a recent fortune";
+    if (!why && SKIP_COPIES && isTrainingCopy(text)) {
+      why = "copy of training";
+      if (fallback.empty()) fallback = text;
+    }
     ok = (why == nullptr);
     // A blocked fortune is never redrawn or logged - the reason alone is enough.
     status::update(attempt, blocked ? std::string() : text, ta, ok ? "Done!" : why, true);
@@ -374,6 +399,7 @@ std::string makeFortune() {
                   why ? "  -> rejected: " : "", why ? why : "");
     if (!ok && status::active) delay(600);   // let the rejection be seen
   }
+  if (!ok && !fallback.empty()) { text = fallback; ok = true; }
   if (!ok) text = "AI FAILURE";
   else rememberRecent(text);
   unsigned long ms = millis() - t0;
@@ -424,6 +450,7 @@ void setup() {
   prefs.begin("fortunellm", false);
   fontIndex = prefs.getUChar("font", 0) % NUM_FONTS;
   Serial.printf("Font: %s (hold BOOT to change)\n", FONTS[fontIndex].name);
+  loadRecent();
 
   if (!gfx->begin()) Serial.println("Display init failed!");
   gfx->setTextWrap(false);

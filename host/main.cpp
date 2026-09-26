@@ -180,23 +180,28 @@ static std::string generateOnce(const std::vector<int> &prompt, bool greedy) {
   return out;
 }
 
-// Retries an unusable fortune the way the sketch does.
+// Retries an unusable fortune the way the sketch does: a recent repeat is never
+// accepted, and the first training copy that isn't one is the fallback if no
+// try succeeds.
 static std::string makeFortune(const std::vector<int> &prompt, bool greedy, bool filter,
                                bool verbose) {
   if (!filter) return generateOnce(prompt, greedy);
-  std::string text;
+  std::string text, fallback;
   for (int attempt = 1; attempt <= g_maxTries; attempt++) {
     text = generateOnce(prompt, greedy);
     const char *why = rejectReason(text);
-    if (!why && g_skipCopies && isTrainingCopy(text) && attempt < g_maxTries)
-      why = "copy of training";
-    if (!why && g_recentMemory > 0 && isRecentRepeat(text) && attempt < g_maxTries)
+    if (!why && g_recentMemory > 0 && isRecentRepeat(text))
       why = "repeat of a recent fortune";
+    if (!why && g_skipCopies && isTrainingCopy(text)) {
+      why = "copy of training";
+      if (fallback.empty()) fallback = text;
+    }
     if (verbose)
       printf("  try %d: %s%s%s\n", attempt, text.c_str(), why ? "  -> rejected: " : "",
              why ? why : "");
     if (!why) { rememberRecent(text); return text; }
   }
+  if (!fallback.empty()) { rememberRecent(fallback); return fallback; }
   return "The stars are silent. Try again.";
 }
 
