@@ -72,7 +72,7 @@ const int   MAX_TRIES   = 10;     // regenerate if a fortune is unusable - raise
                                    // reject more attempts and need the extra tries
 const bool  SKIP_COPIES = true;   // regenerate exact copies of training fortunes
 const bool  SKIP_MADE_UP_WORDS = true;  // regenerate fortunes containing non-words
-const bool  CHECK_TRIGRAMS = false;   // regenerate fortunes with a 3-word run never
+const bool  CHECK_TRIGRAMS = true;   // regenerate fortunes with a 3-word run never
                                       // seen in training - real words, wrong order
 const int   RECENT_MEMORY = 100;   // don't show a fortune that matches one of the
                                     // last N shown, so the model's favorites don't
